@@ -1,0 +1,152 @@
+/* Global styles */
+body {
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    background-color: #bde4f1   ;
+
+    
+  }
+  
+.img1{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    align-items: center;
+    margin-bottom: 0px;
+}
+
+
+.img-container {
+  position: relative;
+
+  
+}
+.img-container button {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+}
+.img-container nav{
+  position: absolute;
+}
+
+
+
+.donatebutton {
+  background-color: white;
+  color: rgb(11, 176, 11);
+  font-weight: bold;
+  font-size: 1.2rem;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+  border-radius: 30px;
+  width: 240px;
+  height: 60px;
+}
+
+.donatebutton:hover{
+  background-color: #a9ffb1;
+  opacity: 80%;
+}
+
+  a {
+    color: #007bff;
+    text-decoration: none;
+    color: #fff;
+    background-color: #ffffff;
+    padding: 5px;
+    border-radius: 10px;
+    text-decoration: none;
+  }
+  
+
+  
+  /* Header styles */
+  
+  h1 {
+    font-size: 36px;
+    margin: 0;
+    text-align: center;
+  }
+  
+nav{
+  background-color: rgb(255, 255, 255);
+  width: 1200px;
+  height: 65px;
+  border-radius: 300px;
+  margin-left: 350px;
+  margin-top: 20px;
+}
+  
+  nav ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    margin: 10px;
+    margin-left: 350px;
+  }
+  
+  nav ul li {
+    margin: 0 10px;
+  }
+  
+  nav ul li a {
+    color: #000000;
+    text-decoration: none;
+  }
+  
+ 
+  
+  /* Main styles */
+  main {
+    object-fit: cover;
+    margin: 0 auto;
+    padding: 00px;
+    background-color: #ffffff;
+  }
+  
+  h2 {
+    font-size: 24px;
+    margin: 0 0 20px 0;
+  }
+  
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  
+  li {
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    box-shadow: 0 2px 2px rgba(0,0,0,0.1);
+  }
+  
+  h3 {
+    font-size: 20px;
+    margin: 0 0 10px 0;
+  }
+  
+  /* Footer styles */
+  footer {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-top: 1px solid #ccc;
+    text-align: center;
+    background-image: url('https://singularityhub.com/wp-content/uploads/2019/03/pacific-ocean-floor-underwater-seascape-future-of-energy-shutterstock-628736915-1068x601.jpg');
+    background-repeat: repeat;
+    background-size: cover;
+  }
+  

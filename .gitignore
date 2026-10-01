@@ -1,0 +1,14 @@
+# Local settings and secrets
+config/config.yaml
+.env
+
+# Generated data
+data/*
+!data/.gitkeep
+!data/news.example.json
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/

@@ -1,0 +1,5 @@
+[
+  {"time": "2026-10-02T12:30:00Z", "currency": "USD", "impact": "high", "title": "Non-Farm Payrolls"},
+  {"time": "2026-10-02T12:30:00Z", "currency": "USD", "impact": "high", "title": "Unemployment Rate"},
+  {"time": "2026-10-08T09:00:00Z", "currency": "EUR", "impact": "medium", "title": "Example medium event (ignored)"}
+]

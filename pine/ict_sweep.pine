@@ -1,0 +1,336 @@
+// ICT liquidity sweep -> SMT divergence -> CISD -> FVG entry.
+// Mirrors bot/strategies/ict_sweep.py so TradingView's Strategy Tester shows the same
+// trades as the Python bot. Risk block mirrors bot/risk.py (FundedNext Stellar Instant:
+// 6% trailing max loss, 0.25% risk per trade, $7/lot commission, charged by TradingView
+// as $3.50 per lot on entry and on exit). Position sizing is exact for XXXUSD pairs.
+//@version=5
+strategy("ICT Sweep SMT CISD FVG [FN bot]", overlay=true, initial_capital=2000, currency=currency.USD,
+     commission_type=strategy.commission.cash_per_contract, commission_value=0.000035, slippage=2,
+     pyramiding=0, max_bars_back=500)
+
+// ---------- Inputs (same names/defaults as config/config.example.yaml) ----------
+gL = "Liquidity / structure"
+pivotLeft  = input.int(3, "Pivot left", minval=1, group=gL)
+pivotRight = input.int(3, "Pivot right", minval=1, group=gL)
+usePrevDay = input.bool(true, "Previous day high/low as liquidity", group=gL)
+dayTz      = input.string("UTC", "Day boundary timezone (match your data)", group=gL)
+sweepMax   = input.int(10, "Max bars sweep -> CISD", group=gL)
+fvgWait    = input.int(15, "Max bars CISD -> entry", group=gL)
+minFvgAtr  = input.float(0.1, "Min FVG size (x ATR)", group=gL)
+bullClose  = input.bool(true, "Entry candle must close in trade direction", group=gL)
+cisdLb     = input.int(20, "CISD lookback", group=gL)
+gS = "SMT"
+useSmt = input.bool(false, "Require SMT divergence (optional)", group=gS)
+smtSym = input.symbol("FX:GBPUSD", "SMT pair (correlated)", group=gS)
+gK = "Kill zones (UTC)"
+useSess = input.bool(true, "Only enter in kill zones", group=gK)
+sess1   = input.session("0700-1000", "London", group=gK)
+sess2   = input.session("1200-1500", "New York", group=gK)
+gR = "Risk (FundedNext)"
+atrLen     = input.int(14, "ATR length", group=gR)
+slBuf      = input.float(0.1, "SL buffer (x ATR)", group=gR)
+rr         = input.float(3.0, "Reward : risk", group=gR)
+riskPct    = input.float(0.25, "Risk per trade %", group=gR)
+maxLossPct = input.float(6, "Max loss %", group=gR)
+trailing   = input.bool(true, "Trailing max loss (Stellar Instant)", group=gR)
+buffer     = input.float(0.8, "Safety buffer", group=gR)
+
+atrV = ta.atr(atrLen)
+inSess = not useSess or not na(time(timeframe.period, sess1, "UTC")) or not na(time(timeframe.period, sess2, "UTC"))
+[cH, cL] = request.security(smtSym, timeframe.period, [high, low], lookahead=barmerge.lookahead_off)
+
+// ---------- Previous-day high/low (own and SMT pair), day boundary in dayTz ----------
+dayKey = year(time, dayTz) * 10000 + month(time, dayTz) * 100 + dayofmonth(time, dayTz)
+newDay = dayKey != dayKey[1]
+var float curHi = na
+var float curLo = na
+var float pdh = na
+var float pdl = na
+var float cCurHi = na
+var float cCurLo = na
+var float cPdh = na
+var float cPdl = na
+if newDay
+    pdh := curHi
+    pdl := curLo
+    cPdh := cCurHi
+    cPdl := cCurLo
+    curHi := high
+    curLo := low
+    cCurHi := cH
+    cCurLo := cL
+else
+    curHi := math.max(curHi, high)
+    curLo := math.min(curLo, low)
+    cCurHi := na(cCurHi) ? cH : na(cH) ? cCurHi : math.max(cCurHi, cH)
+    cCurLo := na(cCurLo) ? cL : na(cL) ? cCurLo : math.min(cCurLo, cL)
+
+// ---------- Swings ----------
+ph = ta.pivothigh(high, pivotLeft, pivotRight)
+pl = ta.pivotlow(low, pivotLeft, pivotRight)
+var float swingH = na
+var int swingHBar = na
+var float swingL = na
+var int swingLBar = na
+if not na(ph)
+    swingH := ph
+    swingHBar := bar_index - pivotRight
+if not na(pl)
+    swingL := pl
+    swingLBar := bar_index - pivotRight
+
+// Open of the bearish (long) / bullish (short) run that delivered price into bar `off` bars ago.
+cisdLong(off) =>
+    float lvl = na
+    int m = off
+    int last = off + cisdLb
+    while m <= last and not (close[m] < open[m])
+        m += 1
+    if m <= last
+        while m + 1 <= last and close[m + 1] < open[m + 1]
+            m += 1
+        lvl := open[m]
+    lvl
+cisdShort(off) =>
+    float lvl = na
+    int m = off
+    int last = off + cisdLb
+    while m <= last and not (close[m] > open[m])
+        m += 1
+    if m <= last
+        while m + 1 <= last and close[m + 1] > open[m + 1]
+            m += 1
+        lvl := open[m]
+    lvl
+
+// States: 0 idle, 1 swept (waiting for CISD), 2 waiting for FVG entry
+// ---------- Long side ----------
+var int lState = 0
+var float lSmtRef = na
+var float lCorrMin = na
+var int lSweepLowBar = na
+var float lSweepLow = na
+var float lCisd = na
+var int lCisdBar = na
+var float lFvgTop = na
+var float lFvgBot = na
+var int lFvgBar = na
+var int lPdlTakenDay = na
+bool longSig = false
+float longSL = na
+
+if not na(atrV)
+    if lState == 1
+        if not na(cL)
+            lCorrMin := na(lCorrMin) ? cL : math.min(lCorrMin, cL)
+        if low < lSweepLow
+            lSweepLow := low
+            lSweepLowBar := bar_index
+            lCisd := cisdLong(0)
+        if bar_index - lSweepLowBar > sweepMax
+            lState := 0
+        else if not na(lCisd) and close > lCisd
+            smtOk = not useSmt or (not na(lSmtRef) and not na(lCorrMin) and lCorrMin > lSmtRef)
+            if not smtOk
+                lState := 0
+            else
+                lState := 2
+                lCisdBar := bar_index
+                lFvgTop := na
+                lFvgBot := na
+                lFvgBar := na
+                startOff = bar_index - lSweepLowBar - 2
+                if startOff >= 0
+                    for o = startOff to 0
+                        if low[o] > high[o + 2] and low[o] - high[o + 2] >= minFvgAtr * atrV[o]
+                            lFvgTop := low[o]
+                            lFvgBot := high[o + 2]
+                            lFvgBar := bar_index - o
+    else if lState == 2
+        if close < lSweepLow or bar_index - lCisdBar > fvgWait
+            lState := 0
+        else
+            if not na(lFvgTop) and lFvgBar < bar_index and low <= lFvgTop and close > lFvgBot and (close > open or not bullClose)
+                longSig := true
+                longSL := lSweepLow - slBuf * atrV
+                lState := 0
+            else
+                if not na(lFvgTop) and close < lFvgBot
+                    lFvgTop := na
+                    lFvgBot := na
+                    lFvgBar := na
+                if low > high[2] and low - high[2] >= minFvgAtr * atrV
+                    lFvgTop := low
+                    lFvgBot := high[2]
+                    lFvgBar := bar_index
+    if lState == 0 and not longSig
+        bool hitSwing = not na(swingL) and low < swingL
+        bool hitPdl = usePrevDay and not na(pdl) and low < pdl and (na(lPdlTakenDay) or lPdlTakenDay != dayKey)
+        if hitSwing or hitPdl
+            useSwingRef = hitSwing and (not hitPdl or swingL <= pdl)
+            if useSwingRef
+                float ref = na
+                for o = bar_index - swingLBar - pivotRight to bar_index - swingLBar + pivotLeft
+                    if o >= 0 and not na(cL[o])
+                        ref := na(ref) ? cL[o] : math.min(ref, cL[o])
+                lSmtRef := ref
+            else
+                lSmtRef := cPdl
+            if hitSwing
+                swingL := na
+            if hitPdl
+                lPdlTakenDay := dayKey
+            lState := 1
+            lSweepLowBar := bar_index
+            lSweepLow := low
+            lCorrMin := cL
+            lCisd := cisdLong(0)
+
+// ---------- Short side (mirror image) ----------
+var int sState = 0
+var float sSmtRef = na
+var float sCorrMax = na
+var int sSweepHighBar = na
+var float sSweepHigh = na
+var float sCisd = na
+var int sCisdBar = na
+var float sFvgTop = na
+var float sFvgBot = na
+var int sFvgBar = na
+var int sPdhTakenDay = na
+bool shortSig = false
+float shortSL = na
+
+if not na(atrV)
+    if sState == 1
+        if not na(cH)
+            sCorrMax := na(sCorrMax) ? cH : math.max(sCorrMax, cH)
+        if high > sSweepHigh
+            sSweepHigh := high
+            sSweepHighBar := bar_index
+            sCisd := cisdShort(0)
+        if bar_index - sSweepHighBar > sweepMax
+            sState := 0
+        else if not na(sCisd) and close < sCisd
+            smtOk = not useSmt or (not na(sSmtRef) and not na(sCorrMax) and sCorrMax < sSmtRef)
+            if not smtOk
+                sState := 0
+            else
+                sState := 2
+                sCisdBar := bar_index
+                sFvgTop := na
+                sFvgBot := na
+                sFvgBar := na
+                startOff = bar_index - sSweepHighBar - 2
+                if startOff >= 0
+                    for o = startOff to 0
+                        if high[o] < low[o + 2] and low[o + 2] - high[o] >= minFvgAtr * atrV[o]
+                            sFvgBot := high[o]
+                            sFvgTop := low[o + 2]
+                            sFvgBar := bar_index - o
+    else if sState == 2
+        if close > sSweepHigh or bar_index - sCisdBar > fvgWait
+            sState := 0
+        else
+            if not na(sFvgBot) and sFvgBar < bar_index and high >= sFvgBot and close < sFvgTop and (close < open or not bullClose)
+                shortSig := true
+                shortSL := sSweepHigh + slBuf * atrV
+                sState := 0
+            else
+                if not na(sFvgBot) and close > sFvgTop
+                    sFvgTop := na
+                    sFvgBot := na
+                    sFvgBar := na
+                if high < low[2] and low[2] - high >= minFvgAtr * atrV
+                    sFvgBot := high
+                    sFvgTop := low[2]
+                    sFvgBar := bar_index
+    if sState == 0 and not shortSig
+        bool hitSwing = not na(swingH) and high > swingH
+        bool hitPdh = usePrevDay and not na(pdh) and high > pdh and (na(sPdhTakenDay) or sPdhTakenDay != dayKey)
+        if hitSwing or hitPdh
+            useSwingRef = hitSwing and (not hitPdh or swingH >= pdh)
+            if useSwingRef
+                float ref = na
+                for o = bar_index - swingHBar - pivotRight to bar_index - swingHBar + pivotLeft
+                    if o >= 0 and not na(cH[o])
+                        ref := na(ref) ? cH[o] : math.max(ref, cH[o])
+                sSmtRef := ref
+            else
+                sSmtRef := cPdh
+            if hitSwing
+                swingH := na
+            if hitPdh
+                sPdhTakenDay := dayKey
+            sState := 1
+            sSweepHighBar := bar_index
+            sSweepHigh := high
+            sCorrMax := cH
+            sCisd := cisdShort(0)
+
+// ---------- FundedNext risk guard (bot/risk.py) ----------
+var float hwm = strategy.initial_capital
+balance = strategy.initial_capital + strategy.netprofit
+hwm := math.max(hwm, balance)
+limit = strategy.initial_capital * maxLossPct / 100
+floorLvl = trailing ? math.min(hwm - limit, strategy.initial_capital) : strategy.initial_capital - limit
+riskAmt = balance * riskPct / 100
+openRisk = strategy.position_size != 0 ? riskAmt : 0.0
+guardOk = strategy.equity - openRisk - riskAmt >= floorLvl + (1 - buffer) * limit
+var bool breached = false
+if strategy.equity < floorLvl
+    breached := true
+
+lotsFor(dist) => math.floor(riskAmt / dist / 1000) * 1000   // units, rounded down to 0.01 lot
+
+var float lStop = na
+var float sStop = na
+if longSig and inSess and strategy.position_size == 0 and guardOk and not breached
+    dist = close - longSL
+    qty = lotsFor(dist)
+    if qty >= 1000
+        lStop := longSL
+        strategy.entry("Long", strategy.long, qty=qty)
+        strategy.exit("Long exit", "Long", stop=longSL, limit=close + rr * dist)
+        alert('{"action":"buy","symbol":"' + syminfo.ticker + '","sl":' + str.tostring(longSL) + '}', alert.freq_once_per_bar_close)
+if shortSig and inSess and strategy.position_size == 0 and guardOk and not breached
+    dist = shortSL - close
+    qty = lotsFor(dist)
+    if qty >= 1000
+        sStop := shortSL
+        strategy.entry("Short", strategy.short, qty=qty)
+        strategy.exit("Short exit", "Short", stop=shortSL, limit=close - rr * dist)
+        alert('{"action":"sell","symbol":"' + syminfo.ticker + '","sl":' + str.tostring(shortSL) + '}', alert.freq_once_per_bar_close)
+
+if strategy.position_size > 0
+    ent = strategy.position_avg_price
+    strategy.exit("Long exit", "Long", stop=lStop, limit=ent + rr * (ent - lStop))
+if strategy.position_size < 0
+    ent = strategy.position_avg_price
+    strategy.exit("Short exit", "Short", stop=sStop, limit=ent - rr * (sStop - ent))
+
+// ---------- Visuals ----------
+plot(lState > 0 ? lSweepLow : na, "Long sweep low", color.new(color.green, 0), 1, plot.style_linebr)
+plot(sState > 0 ? sSweepHigh : na, "Short sweep high", color.new(color.red, 0), 1, plot.style_linebr)
+lt = plot(lState == 2 ? lFvgTop : na, "Bullish FVG top", color.new(color.green, 60), style=plot.style_linebr)
+lb = plot(lState == 2 ? lFvgBot : na, "Bullish FVG bottom", color.new(color.green, 60), style=plot.style_linebr)
+fill(lt, lb, color.new(color.green, 85))
+st = plot(sState == 2 ? sFvgTop : na, "Bearish FVG top", color.new(color.red, 60), style=plot.style_linebr)
+sb = plot(sState == 2 ? sFvgBot : na, "Bearish FVG bottom", color.new(color.red, 60), style=plot.style_linebr)
+fill(st, sb, color.new(color.red, 85))
+plot(usePrevDay ? pdh : na, "Prev day high", color.new(color.gray, 50), 1, plot.style_stepline)
+plot(usePrevDay ? pdl : na, "Prev day low", color.new(color.gray, 50), 1, plot.style_stepline)
+plotshape(longSig and inSess, "Buy signal", shape.triangleup, location.belowbar, color.green, size=size.small)
+plotshape(shortSig and inSess, "Sell signal", shape.triangledown, location.abovebar, color.red, size=size.small)
+bgcolor(useSess and inSess ? color.new(color.blue, 94) : na, title="Kill zone")
+
+var table panel = table.new(position.top_right, 2, 4, bgcolor=color.new(color.black, 80))
+if barstate.islast
+    table.cell(panel, 0, 0, "Balance", text_color=color.white)
+    table.cell(panel, 1, 0, str.tostring(balance, "#.00"), text_color=color.white)
+    table.cell(panel, 0, 1, "Max-loss floor", text_color=color.white)
+    table.cell(panel, 1, 1, str.tostring(floorLvl, "#.00"), text_color=color.orange)
+    table.cell(panel, 0, 2, "Room to floor", text_color=color.white)
+    table.cell(panel, 1, 2, str.tostring(strategy.equity - floorLvl, "#.00"), text_color=color.white)
+    table.cell(panel, 0, 3, "Breached", text_color=color.white)
+    table.cell(panel, 1, 3, breached ? "YES" : "no", text_color=breached ? color.red : color.lime)

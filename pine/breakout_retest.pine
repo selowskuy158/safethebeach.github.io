@@ -1,0 +1,224 @@
+// Breakout + retest with Fibonacci, RSI, Stochastic and candle-close confirmation.
+// Mirrors bot/strategies/breakout_retest.py so TradingView's Strategy Tester shows the
+// same trades as the Python bot. Risk block mirrors bot/risk.py (FundedNext Stellar
+// Instant: 6% trailing max loss, 0.25% risk per trade, $7/lot commission, charged by
+// TradingView as $3.50 per lot on entry and on exit).
+// Position sizing is exact for XXXUSD pairs (EURUSD, GBPUSD...).
+//@version=5
+strategy("Breakout Retest Fib RSI Stoch [FN bot]", overlay=true, initial_capital=2000, currency=currency.USD,
+     commission_type=strategy.commission.cash_per_contract, commission_value=0.000035, slippage=2,
+     pyramiding=0, max_bars_back=500)
+
+// ---------- Inputs (same names/defaults as config/config.example.yaml) ----------
+gS = "Structure"
+pivotLeft  = input.int(5, "Pivot left", minval=1, group=gS)
+pivotRight = input.int(5, "Pivot right", minval=1, group=gS)
+emaLen     = input.int(200, "Trend EMA (0 = off)", minval=0, group=gS)
+tolAtr     = input.float(0.3, "Retest tolerance (x ATR)", group=gS)
+maxRetest  = input.int(20, "Max bars to retest", group=gS)
+fibMin     = input.float(0.382, "Fib depth min", group=gS)
+fibMax     = input.float(0.618, "Fib depth max", group=gS)
+minBody    = input.float(0.5, "Min body / range", group=gS)
+gM = "Momentum"
+rsiLen   = input.int(14, "RSI length", group=gM)
+rsiMin   = input.float(45, "RSI >= (longs); shorts use 100 - this", group=gM)
+kLen     = input.int(14, "Stoch %K", group=gM)
+kSmooth  = input.int(3, "Stoch smooth", group=gM)
+dLen     = input.int(3, "Stoch %D", group=gM)
+osLevel  = input.float(30, "Stoch oversold; overbought = 100 - this", group=gM)
+stochLb  = input.int(5, "Stoch lookback", group=gM)
+gR = "Risk (FundedNext)"
+atrLen     = input.int(14, "ATR length", group=gR)
+slBuf      = input.float(0.2, "SL buffer (x ATR)", group=gR)
+rr         = input.float(3.0, "Reward : risk", group=gR)
+riskPct    = input.float(0.25, "Risk per trade %", group=gR)
+maxLossPct = input.float(6, "Max loss %", group=gR)
+trailing   = input.bool(true, "Trailing max loss (Stellar Instant)", group=gR)
+buffer     = input.float(0.8, "Safety buffer", group=gR)
+useSess    = input.bool(false, "Only trade in session", group=gR)
+sess       = input.session("0700-1600", "Session (UTC)", group=gR)
+
+// ---------- Indicators ----------
+atrV = ta.atr(atrLen)
+rsiV = ta.rsi(close, rsiLen)
+k = ta.sma(ta.stoch(close, high, low, kLen), kSmooth)
+d = ta.sma(k, dLen)
+kLow = ta.lowest(k, stochLb)
+kHigh = ta.highest(k, stochLb)
+emaV = ta.ema(close, math.max(emaLen, 1))
+tol = tolAtr * atrV
+inSess = not useSess or not na(time(timeframe.period, sess, "UTC"))
+
+// ---------- Swings (confirmed pivotRight bars later: no repainting) ----------
+ph = ta.pivothigh(high, pivotLeft, pivotRight)
+pl = ta.pivotlow(low, pivotLeft, pivotRight)
+var float swingH = na
+var int swingHBar = na
+var float swingL = na
+var int swingLBar = na
+if not na(ph)
+    swingH := ph
+    swingHBar := bar_index - pivotRight
+if not na(pl)
+    swingL := pl
+    swingLBar := bar_index - pivotRight
+
+// ---------- Long setup ----------
+var bool lActive = false
+var float lLevel = na
+var float lA = na
+var float lB = na
+var float lRet = na
+var int lStart = na
+var bool lTouched = false
+bool longSig = false
+float longSL = na
+
+if lActive
+    if bar_index - lStart > maxRetest or close < lLevel - tol
+        lActive := false
+    else
+        if not lTouched
+            if low <= lLevel + tol
+                lTouched := true
+                lRet := low
+            else
+                lB := math.max(lB, high)
+        else
+            lRet := math.min(lRet, low)
+        if lTouched
+            rng = high - low
+            depth = (lB - lRet) / (lB - lA)
+            okCandle = rng > 0 and close > open and (close - open) / rng >= minBody and close > lLevel
+            okFib = lB > lA and depth >= fibMin and depth <= fibMax
+            okMom = rsiV >= rsiMin and k > d and kLow <= osLevel
+            okTrend = emaLen == 0 or close > emaV
+            if okCandle and okFib and okMom and okTrend
+                longSig := true
+                longSL := lRet - slBuf * atrV
+                lActive := false
+
+if not lActive and not na(swingH) and not na(atrV) and close > swingH and close[1] <= swingH
+    lActive := true
+    lLevel := swingH
+    float a = low
+    for j = 0 to bar_index - swingHBar
+        a := math.min(a, low[j])
+    lA := a
+    lB := high
+    lStart := bar_index
+    lTouched := false
+    swingH := na
+
+// ---------- Short setup (mirror image) ----------
+var bool sActive = false
+var float sLevel = na
+var float sA = na
+var float sB = na
+var float sRet = na
+var int sStart = na
+var bool sTouched = false
+bool shortSig = false
+float shortSL = na
+
+if sActive
+    if bar_index - sStart > maxRetest or close > sLevel + tol
+        sActive := false
+    else
+        if not sTouched
+            if high >= sLevel - tol
+                sTouched := true
+                sRet := high
+            else
+                sB := math.min(sB, low)
+        else
+            sRet := math.max(sRet, high)
+        if sTouched
+            rng = high - low
+            depth = (sRet - sB) / (sA - sB)
+            okCandle = rng > 0 and close < open and (open - close) / rng >= minBody and close < sLevel
+            okFib = sA > sB and depth >= fibMin and depth <= fibMax
+            okMom = rsiV <= 100 - rsiMin and k < d and kHigh >= 100 - osLevel
+            okTrend = emaLen == 0 or close < emaV
+            if okCandle and okFib and okMom and okTrend
+                shortSig := true
+                shortSL := sRet + slBuf * atrV
+                sActive := false
+
+if not sActive and not na(swingL) and not na(atrV) and close < swingL and close[1] >= swingL
+    sActive := true
+    sLevel := swingL
+    float a = high
+    for j = 0 to bar_index - swingLBar
+        a := math.max(a, high[j])
+    sA := a
+    sB := low
+    sStart := bar_index
+    sTouched := false
+    swingL := na
+
+// ---------- FundedNext risk guard (bot/risk.py) ----------
+var float hwm = strategy.initial_capital
+balance = strategy.initial_capital + strategy.netprofit
+hwm := math.max(hwm, balance)
+limit = strategy.initial_capital * maxLossPct / 100
+floorLvl = trailing ? math.min(hwm - limit, strategy.initial_capital) : strategy.initial_capital - limit
+riskAmt = balance * riskPct / 100
+openRisk = strategy.position_size != 0 ? riskAmt : 0.0
+guardOk = strategy.equity - openRisk - riskAmt >= floorLvl + (1 - buffer) * limit
+var bool breached = false
+if strategy.equity < floorLvl
+    breached := true
+
+lotsFor(dist) => math.floor(riskAmt / dist / 1000) * 1000   // units, rounded down to 0.01 lot
+
+var float lStop = na
+var float sStop = na
+if longSig and inSess and strategy.position_size == 0 and guardOk and not breached
+    dist = close - longSL
+    qty = lotsFor(dist)
+    if qty >= 1000
+        lStop := longSL
+        strategy.entry("Long", strategy.long, qty=qty)
+        strategy.exit("Long exit", "Long", stop=longSL, limit=close + rr * dist)
+        alert('{"action":"buy","symbol":"' + syminfo.ticker + '","sl":' + str.tostring(longSL) + '}', alert.freq_once_per_bar_close)
+if shortSig and inSess and strategy.position_size == 0 and guardOk and not breached
+    dist = shortSL - close
+    qty = lotsFor(dist)
+    if qty >= 1000
+        sStop := shortSL
+        strategy.entry("Short", strategy.short, qty=qty)
+        strategy.exit("Short exit", "Short", stop=shortSL, limit=close - rr * dist)
+        alert('{"action":"sell","symbol":"' + syminfo.ticker + '","sl":' + str.tostring(shortSL) + '}', alert.freq_once_per_bar_close)
+
+// Re-anchor the target to the real fill so it stays exactly rr x risk (the bot does the same).
+if strategy.position_size > 0
+    ent = strategy.position_avg_price
+    strategy.exit("Long exit", "Long", stop=lStop, limit=ent + rr * (ent - lStop))
+if strategy.position_size < 0
+    ent = strategy.position_avg_price
+    strategy.exit("Short exit", "Short", stop=sStop, limit=ent - rr * (sStop - ent))
+
+// ---------- Visuals ----------
+plot(lActive ? lLevel : na, "Long breakout level", color.new(color.green, 0), 1, plot.style_linebr)
+plot(sActive ? sLevel : na, "Short breakout level", color.new(color.red, 0), 1, plot.style_linebr)
+fibTopL = plot(lActive ? lB - fibMin * (lB - lA) : na, "Long fib zone top", color.new(color.green, 70), style=plot.style_linebr)
+fibBotL = plot(lActive ? lB - fibMax * (lB - lA) : na, "Long fib zone bottom", color.new(color.green, 70), style=plot.style_linebr)
+fill(fibTopL, fibBotL, color.new(color.green, 90))
+fibTopS = plot(sActive ? sB + fibMax * (sA - sB) : na, "Short fib zone top", color.new(color.red, 70), style=plot.style_linebr)
+fibBotS = plot(sActive ? sB + fibMin * (sA - sB) : na, "Short fib zone bottom", color.new(color.red, 70), style=plot.style_linebr)
+fill(fibTopS, fibBotS, color.new(color.red, 90))
+plot(emaLen > 0 ? emaV : na, "Trend EMA", color.new(color.gray, 40))
+plotshape(longSig and inSess, "Buy signal", shape.triangleup, location.belowbar, color.green, size=size.small)
+plotshape(shortSig and inSess, "Sell signal", shape.triangledown, location.abovebar, color.red, size=size.small)
+
+var table panel = table.new(position.top_right, 2, 4, bgcolor=color.new(color.black, 80))
+if barstate.islast
+    table.cell(panel, 0, 0, "Balance", text_color=color.white)
+    table.cell(panel, 1, 0, str.tostring(balance, "#.00"), text_color=color.white)
+    table.cell(panel, 0, 1, "Max-loss floor", text_color=color.white)
+    table.cell(panel, 1, 1, str.tostring(floorLvl, "#.00"), text_color=color.orange)
+    table.cell(panel, 0, 2, "Room to floor", text_color=color.white)
+    table.cell(panel, 1, 2, str.tostring(strategy.equity - floorLvl, "#.00"), text_color=color.white)
+    table.cell(panel, 0, 3, "Breached", text_color=color.white)
+    table.cell(panel, 1, 3, breached ? "YES" : "no", text_color=breached ? color.red : color.lime)

@@ -1,0 +1,43 @@
+Account $2,000 | risk 0.25%/trade | max loss 6% trailing | daily limit none | personal daily stop 2% | commission $7/lot | symbols ['EURUSD', 'GBPUSD']
+
+breakout_retest: 18 trades written to data/oos_breakout_retest.csv
+ict_sweep: 42 trades written to data/oos_ict_sweep.csv
+ict_sweep+smt: 46 trades written to data/oos_ict_sweep+smt.csv
+                             breakout_retest                 ict_sweep             ict_sweep+smt
+trades                                    18                        42                        46
+period              2025-01-01 -> 2025-12-31  2025-01-01 -> 2025-12-31  2025-01-01 -> 2025-12-31
+trades_per_month                         1.5                       3.5                       3.9
+win_rate_%                              27.8                      11.9                      15.2
+avg_R                                  0.034                    -0.545                    -0.413
+profit_factor                            1.0                      0.37                      0.55
+net_profit_$                           -0.01                    -93.04                    -74.19
+final_balance_$                      1999.99                   1906.96                   1925.81
+return_%                                -0.0                     -4.65                     -3.71
+max_drawdown_$                         24.74                    101.47                     96.55
+max_drawdown_%                          1.22                      5.05                      4.77
+max_losing_streak                          4                        17                        11
+commission_$                             4.2                      5.04                      5.46
+avg_lots                               0.033                     0.017                     0.017
+closest_to_floor_$                     95.54                     24.14                     25.85
+breached                                  no                        no                        no
+reached_+8%                               no                        no                        no
+guard_halted_days                          0                         0                         0
+skipped_by_guard                           0                       263                        23
+skipped_min_lot                            0                        44                        12
+skipped_busy                               0                        19                         5
+
+breakout_retest: only 18 trades, too few for a meaningful Monte Carlo
+
+Monte Carlo, ict_sweep (42 trades resampled, 5000 runs, 6% trailing max loss, guard buffer 0.8):
+                         0.25%  0.5%   1%
+P(+8% first)                0%    0%   1%
+P(max loss first)         100%  100%  99%
+P(neither in 500 trades)    0%    0%   0%
+median trades to target      -    34    7
+
+Monte Carlo, ict_sweep+smt (46 trades resampled, 5000 runs, 6% trailing max loss, guard buffer 0.8):
+                         0.25%  0.5%   1%
+P(+8% first)                0%    0%   3%
+P(max loss first)         100%  100%  97%
+P(neither in 500 trades)    0%    0%   0%
+median trades to target      -    20    7

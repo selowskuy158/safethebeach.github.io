@@ -1,0 +1,157 @@
+
+################ EURUSD  (round-trip cost 1.50 pips; pair up = USD weaker)
+
+=== EURUSD IS 2023-01-01 -> 2024-12-31 23:59
+A. Average move per London-time hour (pips):
+london_hour      0       1       2       3       4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19      20      21      22      23
+mean_pips     -0.19    0.12    0.02   -0.26    0.10   -0.21    0.02   -0.66   -0.13   -0.20    0.40   -0.05   -1.25    0.20    0.09   -1.23    0.25    0.41    0.83    0.02   -0.40   -0.57    0.36    1.22
+t             -0.65    0.46    0.05   -1.27    0.55   -1.13    0.07   -1.58   -0.23   -0.41    1.05   -0.15   -2.97    0.23    0.15   -1.73    0.51    1.14    2.03    0.05   -1.44   -3.31    2.62    5.45
+up_%          48.36   50.96   50.29   47.41   49.23   48.85   50.29   47.41   49.71   52.22   54.14   49.61   43.24   51.25   50.29   46.82   48.75   47.49   53.28   51.16   47.30   41.29   55.85   61.46
+days         519.00  520.00  521.00  521.00  520.00  520.00  521.00  521.00  519.00  519.00  519.00  518.00  518.00  519.00  519.00  519.00  519.00  518.00  518.00  518.00  518.00  511.00  419.00  519.00
+cum_pips      -0.19   -0.07   -0.05   -0.31   -0.21   -0.42   -0.40   -1.06   -1.19   -1.39   -0.99   -1.04   -2.29   -2.09   -2.00   -3.23   -2.98   -2.57   -1.73   -1.71   -2.10   -2.67   -2.31   -1.09
+
+B. Average path around each fix (pips vs price at the fix):
+         -6h   -4h   -2h   -1h  +0h   +1h   +2h   +4h   +6h
+fix                                                        
+Tokyo  -1.16 -1.55 -0.64 -0.10  0.0 -0.15  0.04 -0.50 -0.75
+ECB     1.05  0.07  0.03  0.32  0.0 -0.45 -0.79 -1.43 -0.53
+London  1.84  2.09  1.13  1.23  0.0  0.25  0.67  1.49  0.61
+
+   Fixed windows (predicted: pair down before the fix, up after):
+   fix    window predicted  mean_pips     t  up_%  days
+ Tokyo 4h before      down       1.55  3.34 59.42   414
+ Tokyo 2h before      down       0.64  1.67 53.76   519
+ Tokyo  2h after        up       0.04  0.10 50.67   521
+ Tokyo  4h after        up      -0.50 -1.12 48.27   520
+   ECB 4h before      down      -0.07 -0.08 48.94   519
+   ECB 2h before      down      -0.03 -0.06 51.06   519
+   ECB  2h after        up      -0.79 -0.69 49.90   519
+   ECB  4h after        up      -1.43 -1.04 50.19   518
+London 4h before      down      -2.09 -1.57 44.98   518
+London 2h before      down      -1.13 -1.23 46.63   519
+London  2h after        up       0.67  1.10 51.35   518
+London  4h after        up       1.49  1.80 52.51   518
+
+=== EURUSD OOS 2025-01-01 -> 2025-12-31 23:59
+A. Average move per London-time hour (pips):
+london_hour      0       1       2       3       4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19      20      21      22      23
+mean_pips      0.62    1.04   -0.70    0.22    0.43    0.21    0.36    0.25    1.01    0.43    0.02   -0.95   -1.31    2.09    1.40    1.79   -1.42   -0.72   -0.89    0.69   -0.39   -0.34    0.07    1.98
+t              1.06    1.53   -1.32    0.53    1.03    0.49    0.72    0.32    0.96    0.63    0.03   -1.33   -1.98    1.72    1.56    1.62   -1.83   -1.08   -1.37    1.28   -0.80   -0.79    0.19    3.55
+up_%          55.21   54.44   46.54   46.54   55.00   51.54   51.54   51.92   55.98   47.10   45.56   42.86   41.70   52.51   56.37   47.88   44.79   46.72   45.17   55.98   46.33   44.31   55.98   64.86
+days         259.00  259.00  260.00  260.00  260.00  260.00  260.00  260.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  255.00  209.00  259.00
+cum_pips       0.62    1.66    0.96    1.18    1.61    1.83    2.19    2.44    3.45    3.88    3.90    2.95    1.64    3.74    5.13    6.92    5.50    4.78    3.88    4.58    4.18    3.85    3.91    5.90
+
+B. Average path around each fix (pips vs price at the fix):
+         -6h   -4h   -2h   -1h  +0h   +1h   +2h   +4h   +6h
+fix                                                        
+Tokyo  -2.75 -3.05 -1.66 -0.89  0.0 -0.73  0.07  0.36  0.46
+ECB     0.12  1.46  1.98  0.96  0.0  2.14  4.24  3.18  1.84
+London -3.04 -3.97 -3.18 -1.79  0.0 -1.42 -2.14 -2.34 -3.14
+
+   Fixed windows (predicted: pair down before the fix, up after):
+   fix    window predicted  mean_pips     t  up_%  days
+ Tokyo 4h before      down       3.05  2.62 56.31   206
+ Tokyo 2h before      down       1.66  1.87 54.83   259
+ Tokyo  2h after        up       0.07  0.10 48.85   260
+ Tokyo  4h after        up       0.36  0.41 50.77   260
+   ECB 4h before      down      -1.46 -1.14 40.15   259
+   ECB 2h before      down      -1.98 -2.16 44.79   259
+   ECB  2h after        up       4.24  2.83 59.07   259
+   ECB  4h after        up       3.18  1.62 54.44   259
+London 4h before      down       3.97  2.10 55.21   259
+London 2h before      down       3.18  2.24 54.44   259
+London  2h after        up      -2.14 -2.08 42.86   259
+London  4h after        up      -2.34 -1.78 45.17   259
+
+################ GBPUSD  (round-trip cost 1.80 pips; pair up = USD weaker)
+
+=== GBPUSD IS 2023-01-01 -> 2024-12-31 23:59
+A. Average move per London-time hour (pips):
+london_hour      0       1       2       3       4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19      20      21      22      23
+mean_pips     -0.15    0.03    0.15   -0.23    0.15   -0.24   -0.29   -0.54   -0.70    0.42    0.39   -0.43   -0.50    0.19    0.21   -0.46    0.71    1.06    0.67   -0.08   -0.29   -1.00   -0.20    1.44
+t             -0.48    0.09    0.40   -0.93    0.66   -0.97   -0.86   -0.81   -1.04    0.66    0.71   -0.84   -0.84    0.18    0.26   -0.53    1.13    2.14    1.36   -0.14   -0.85   -4.39   -1.21    5.60
+up_%          49.81   46.24   50.19   47.41   51.25   47.60   49.52   47.12   46.44   54.72   53.95   47.30   45.95   51.25   51.83   47.40   51.83   50.39   52.12   50.68   50.19   41.57   48.21   61.90
+days         518.00  519.00  520.00  521.00  521.00  521.00  521.00  520.00  519.00  519.00  519.00  518.00  518.00  519.00  519.00  519.00  519.00  518.00  518.00  517.00  516.00  510.00  419.00  517.00
+cum_pips      -0.15   -0.12    0.03   -0.21   -0.06   -0.29   -0.59   -1.13   -1.83   -1.41   -1.01   -1.44   -1.94   -1.75   -1.54   -2.00   -1.29   -0.24    0.43    0.35    0.06   -0.94   -1.14    0.31
+
+B. Average path around each fix (pips vs price at the fix):
+         -6h   -4h   -2h   -1h  +0h   +1h   +2h   +4h   +6h
+fix                                                        
+Tokyo  -0.01 -0.59 -0.66  0.15  0.0  0.17  0.26 -0.02 -0.42
+ECB     0.34 -0.84 -0.70 -0.25  0.0 -1.04 -0.81 -0.51  1.23
+London  0.61  0.52  0.26  0.46  0.0  0.71  1.79  2.44  1.17
+
+   Fixed windows (predicted: pair down before the fix, up after):
+   fix    window predicted  mean_pips     t  up_%  days
+ Tokyo 4h before      down       0.59  1.14 53.14   414
+ Tokyo 2h before      down       0.66  1.51 51.16   518
+ Tokyo  2h after        up       0.26  0.55 50.10   521
+ Tokyo  4h after        up      -0.02 -0.03 49.90   521
+   ECB 4h before      down       0.84  0.73 52.79   519
+   ECB 2h before      down       0.70  0.90 51.25   519
+   ECB  2h after        up      -0.81 -0.57 51.25   519
+   ECB  4h after        up      -0.51 -0.30 50.19   518
+London 4h before      down      -0.52 -0.31 48.84   518
+London 2h before      down      -0.26 -0.22 50.29   519
+London  2h after        up       1.79  2.17 53.67   518
+London  4h after        up       2.44  2.27 52.42   517
+
+=== GBPUSD OOS 2025-01-01 -> 2025-12-31 23:59
+A. Average move per London-time hour (pips):
+london_hour      0       1       2       3       4       5       6       7       8       9       10      11      12      13      14      15      16      17      18      19      20      21      22      23
+mean_pips      0.06    1.13   -0.68   -0.14    0.40   -0.05    0.13   -0.40   -0.42    1.53    0.45   -1.93    0.63    1.52   -0.08    1.96   -0.41   -0.15    0.17    0.43   -0.35   -1.47   -1.00    3.21
+t              0.10    1.86   -1.20   -0.29    0.96   -0.10    0.26   -0.42   -0.36    1.83    0.69   -2.26    0.70    1.18   -0.09    1.59   -0.46   -0.23    0.24    0.71   -0.65   -3.19   -2.47    6.38
+up_%          53.28   55.21   47.31   50.00   52.31   51.15   48.85   51.92   49.81   53.67   51.35   40.15   52.12   51.74   53.28   50.58   50.19   50.19   53.28   56.37   48.65   38.82   34.76   72.31
+days         259.00  259.00  260.00  260.00  260.00  260.00  260.00  260.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  259.00  255.00  210.00  260.00
+cum_pips       0.06    1.18    0.50    0.36    0.76    0.71    0.85    0.44    0.02    1.56    2.00    0.08    0.71    2.22    2.14    4.09    3.68    3.53    3.70    4.13    3.78    2.32    1.32    4.53
+
+B. Average path around each fix (pips vs price at the fix):
+         -6h   -4h   -2h   -1h  +0h   +1h   +2h   +4h   +6h
+fix                                                        
+Tokyo  -1.10 -1.92 -1.43 -0.37  0.0 -0.44 -0.11  0.09 -0.24
+ECB    -0.12  0.22  1.59  0.41  0.0  1.75  2.84  3.13  2.92
+London -2.54 -4.02 -1.87 -1.96  0.0 -0.41 -0.56  0.04 -1.93
+
+   Fixed windows (predicted: pair down before the fix, up after):
+   fix    window predicted  mean_pips     t  up_%  days
+ Tokyo 4h before      down       1.92  1.86 56.31   206
+ Tokyo 2h before      down       1.43  1.79 58.08   260
+ Tokyo  2h after        up      -0.11 -0.16 47.31   260
+ Tokyo  4h after        up       0.09  0.10 49.23   260
+   ECB 4h before      down      -0.22 -0.14 47.49   259
+   ECB 2h before      down      -1.59 -1.30 44.79   259
+   ECB  2h after        up       2.84  1.80 57.14   259
+   ECB  4h after        up       3.13  1.47 55.60   259
+London 4h before      down       4.02  1.91 58.69   259
+London 2h before      down       1.87  1.19 52.51   259
+London  2h after        up      -0.56 -0.51 49.81   259
+London  4h after        up       0.04  0.03 52.12   259
+
+################ Verdict: predicted sign, t >= 2 and |move| > cost in every period
+symbol    fix    window  IS_pips  OOS_pips  IS_t  OOS_t  cost_pips PASS
+EURUSD  Tokyo 4h before     1.55      3.05  3.34   2.62        1.5    -
+EURUSD  Tokyo 2h before     0.64      1.66  1.67   1.87        1.5    -
+EURUSD  Tokyo  2h after     0.04      0.07  0.10   0.10        1.5    -
+EURUSD  Tokyo  4h after    -0.50      0.36 -1.12   0.41        1.5    -
+EURUSD    ECB 4h before    -0.07     -1.46 -0.08  -1.14        1.5    -
+EURUSD    ECB 2h before    -0.03     -1.98 -0.06  -2.16        1.5    -
+EURUSD    ECB  2h after    -0.79      4.24 -0.69   2.83        1.5    -
+EURUSD    ECB  4h after    -1.43      3.18 -1.04   1.62        1.5    -
+EURUSD London 4h before    -2.09      3.97 -1.57   2.10        1.5    -
+EURUSD London 2h before    -1.13      3.18 -1.23   2.24        1.5    -
+EURUSD London  2h after     0.67     -2.14  1.10  -2.08        1.5    -
+EURUSD London  4h after     1.49     -2.34  1.80  -1.78        1.5    -
+GBPUSD  Tokyo 4h before     0.59      1.92  1.14   1.86        1.8    -
+GBPUSD  Tokyo 2h before     0.66      1.43  1.51   1.79        1.8    -
+GBPUSD  Tokyo  2h after     0.26     -0.11  0.55  -0.16        1.8    -
+GBPUSD  Tokyo  4h after    -0.02      0.09 -0.03   0.10        1.8    -
+GBPUSD    ECB 4h before     0.84     -0.22  0.73  -0.14        1.8    -
+GBPUSD    ECB 2h before     0.70     -1.59  0.90  -1.30        1.8    -
+GBPUSD    ECB  2h after    -0.81      2.84 -0.57   1.80        1.8    -
+GBPUSD    ECB  4h after    -0.51      3.13 -0.30   1.47        1.8    -
+GBPUSD London 4h before    -0.52      4.02 -0.31   1.91        1.8    -
+GBPUSD London 2h before    -0.26      1.87 -0.22   1.19        1.8    -
+GBPUSD London  2h after     1.79     -0.56  2.17  -0.51        1.8    -
+GBPUSD London  4h after     2.44      0.04  2.27   0.03        1.8    -
+
+0 of 24 pre-registered windows pass. No tradable fix pattern after costs in this data: don't build the strategy.

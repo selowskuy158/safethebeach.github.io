@@ -1,10 +1,12 @@
 """Build data/<SYMBOL>_M15.csv from HistData.com M1 ASCII files instead of Dukascopy.
 
-HistData timestamps are EST without daylight saving (fixed UTC-5), so they are
-shifted +5h to UTC. Resampling matches bot.download_dukascopy (left-labelled,
-left-closed bars). HistData's 2023 files miss about a quarter of the hours from
-20 Feb to 28 Jul 2023, so any day cached by dukascopy_prefetch.py (--duka-cache)
-replaces HistData's bars for that UTC day. Run from the repo root:
+HistData says its timestamps are fixed EST, but checked against Dukascopy they are
+UTC-5 in winter and UTC-4 while Europe is on summer time (the switch follows the EU
+dates, e.g. 26 Mar 2023, not the US ones): London wall time minus 5h. So +5h is read
+as Europe/London local time and converted to UTC. Resampling matches
+bot.download_dukascopy (left-labelled, left-closed bars). HistData's 2023 files miss
+about a quarter of the hours from 20 Feb to 28 Jul 2023, so any day cached by
+dukascopy_prefetch.py (--duka-cache) replaces HistData's bars for that UTC day. Run from the repo root:
     python histdata_to_csv.py --src data/histdata --duka-cache data/duka_cache
 """
 import argparse
@@ -41,7 +43,10 @@ for sym in args.symbols:
     parts = [pd.read_csv(Path(args.src) / f"DAT_ASCII_{sym}_M1_{y}.csv", sep=";", header=None,
                          names=["time", "open", "high", "low", "close", "volume"]) for y in args.years]
     m1 = pd.concat(parts)
-    m1["time"] = pd.to_datetime(m1["time"], format="%Y%m%d %H%M%S") + pd.Timedelta(hours=5)  # EST -> UTC
+    london = (pd.to_datetime(m1["time"], format="%Y%m%d %H%M%S") + pd.Timedelta(hours=5)).dt.tz_localize(
+        "Europe/London", ambiguous="NaT", nonexistent="NaT")  # 1-2am on DST Sundays: market closed
+    m1["time"] = london.dt.tz_convert("UTC").dt.tz_localize(None)
+    m1 = m1.dropna(subset=["time"])
     m1 = m1.drop(columns="volume").drop_duplicates("time").set_index("time").sort_index()
     cached = sorted(Path(args.duka_cache, sym).glob("*.bi5")) if args.duka_cache else []
     if cached:

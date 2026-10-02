@@ -1,0 +1,13 @@
+fix,window,predicted,mean_pips,t,up_%,days
+Tokyo,4h before,down,1.55,3.34,59.42,414
+Tokyo,2h before,down,0.64,1.67,53.76,519
+Tokyo,2h after,up,0.04,0.1,50.67,521
+Tokyo,4h after,up,-0.5,-1.12,48.27,520
+ECB,4h before,down,-0.07,-0.08,48.94,519
+ECB,2h before,down,-0.03,-0.06,51.06,519
+ECB,2h after,up,-0.79,-0.69,49.9,519
+ECB,4h after,up,-1.43,-1.04,50.19,518
+London,4h before,down,-2.09,-1.57,44.98,518
+London,2h before,down,-1.13,-1.23,46.63,519
+London,2h after,up,0.67,1.1,51.35,518
+London,4h after,up,1.49,1.8,52.51,518
